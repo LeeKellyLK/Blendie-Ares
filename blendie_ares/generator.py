@@ -3,6 +3,7 @@ from typing import Iterable, List, Tuple
 
 import bmesh
 import bpy
+from math import pi
 from mathutils import Matrix, Quaternion, Vector
 from mathutils.bvhtree import BVHTree
 
@@ -140,6 +141,22 @@ def _polyline_points(vertices: Iterable[Vector], step: float) -> List[Vector]:
     return out
 
 
+def _build_world_bvh_from_object(target_obj: bpy.types.Object, depsgraph):
+    eval_obj = target_obj.evaluated_get(depsgraph)
+    eval_mesh = eval_obj.to_mesh()
+    if eval_mesh is None:
+        return None
+    try:
+        eval_mesh.calc_loop_triangles()
+        verts = [eval_obj.matrix_world @ v.co for v in eval_mesh.vertices]
+        polygons = [tuple(tri.vertices) for tri in eval_mesh.loop_triangles]
+        if not polygons:
+            return None
+        return BVHTree.FromPolygons(verts, polygons, all_triangles=True)
+    finally:
+        eval_obj.to_mesh_clear()
+
+
 def generate_surface_fill(
     source_obj: bpy.types.Object,
     target_obj: bpy.types.Object,
@@ -208,7 +225,7 @@ def generate_chain_link(
     if len(chain_points) < 2:
         raise ValueError("Selected edge loop path is too short for generation")
 
-    bvh = BVHTree.FromObject(target_obj, depsgraph)
+    bvh = _build_world_bvh_from_object(target_obj, depsgraph)
     if bvh is None:
         raise ValueError("Could not build target mesh spatial data")
 
@@ -223,7 +240,7 @@ def generate_chain_link(
         normal = nearest[2] if nearest else Vector((0.0, 0.0, 1.0))
         rot = _orientation_from_tangent_normal(tangent, normal)
         if i % 2:
-            rot = rot @ Quaternion((1.0, 0.0, 0.0), 1.57079632679)
+            rot = Quaternion(tangent.normalized(), pi * 0.5) @ rot
         loc = point + normal.normalized() * normal_offset
         _duplicate_at(source_obj, collection, loc, rot)
 
