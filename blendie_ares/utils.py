@@ -40,7 +40,10 @@ def remove_collection(name: str, scene: bpy.types.Scene | None = None, owner_id:
     if collection is None:
         return
 
-    if owner_id and collection.get(OWNER_KEY) != owner_id:
+    if owner_id is None:
+        return
+
+    if collection.get(OWNER_KEY) != owner_id:
         return
 
     _remove_collection_tree(collection, scene, owner_id)
