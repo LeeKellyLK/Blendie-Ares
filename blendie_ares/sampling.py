@@ -38,7 +38,7 @@ def target_surface_area(target_obj, depsgraph):
 
 def _pick_triangle_index(mode, triangles, areas, rng, index):
     if mode == "UNIFORM":
-        return rng.choices(range(len(triangles)), weights=areas, k=1)[0]
+        return index % len(triangles)
     if mode == "RANDOM":
         return rng.randrange(0, len(triangles))
     return rng.choices(range(len(triangles)), weights=areas, k=1)[0]

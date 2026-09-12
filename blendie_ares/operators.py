@@ -45,16 +45,35 @@ def _compute_transforms_for_targets(context, settings, targets, preview):
         for i in range(base_count % len(targets)):
             quotas[i] += 1
     else:
-        raw = [(area / total_area) * base_count for area in areas]
-        quotas = [int(value) for value in raw]
-        assigned = sum(quotas)
-        if assigned < base_count:
-            remainders = sorted(
-                ((raw[i] - quotas[i], i) for i in range(len(quotas))),
-                reverse=True,
-            )
-            for _, idx in remainders[: base_count - assigned]:
-                quotas[idx] += 1
+        positive_indices = [i for i, area in enumerate(areas) if area > 1e-10]
+        quotas = [0 for _ in targets]
+
+        if base_count >= len(positive_indices):
+            for idx in positive_indices:
+                quotas[idx] = 1
+            remaining = base_count - len(positive_indices)
+            if remaining > 0:
+                positive_total = sum(areas[i] for i in positive_indices)
+                raw = [
+                    ((areas[i] / positive_total) * remaining) if i in positive_indices else 0.0
+                    for i in range(len(areas))
+                ]
+                extra = [int(value) for value in raw]
+                for i in range(len(quotas)):
+                    quotas[i] += extra[i]
+
+                assigned = sum(quotas)
+                if assigned < base_count:
+                    remainders = sorted(
+                        ((raw[i] - extra[i], i) for i in positive_indices),
+                        reverse=True,
+                    )
+                    for _, idx in remainders[: base_count - assigned]:
+                        quotas[idx] += 1
+        else:
+            top_indices = sorted(positive_indices, key=lambda i: areas[i], reverse=True)[:base_count]
+            for idx in top_indices:
+                quotas[idx] = 1
 
     all_transforms = []
     for target_idx, (target, target_quota) in enumerate(zip(targets, quotas)):
