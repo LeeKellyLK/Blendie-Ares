@@ -1,5 +1,33 @@
 # Blendie-Ares
 
+## Install in Blender 5.2.1
+
+1. Open Blender.
+2. Go to **Edit → Preferences → Add-ons**.
+3. Click the menu in the top-right of the Add-ons panel and choose **Install from Disk...**.
+4. Select the `/home/runner/work/Blendie-Ares/Blendie-Ares/blendie_ares` folder (zip it first if your Blender install expects a zip package).
+5. Enable the **Blendie Ares** add-on.
+
+## Quick usage
+
+1. In **3D Viewport → Sidebar**, open the **Blendie Ares** tab.
+2. Set:
+   - **Source Tile**: your single source mesh object.
+   - **Target Mesh**: the mesh to populate.
+3. Choose mode:
+   - **Surface Fill**: distributed duplicates using spacing approximation.
+   - **Chain Link**: follows a selected edge loop/path.
+4. Set **Spacing**, and optionally **Fill Count**, **Normal Offset**, and **Seed**.
+5. Click **Generate**.
+6. Use **Clear** to remove only generated output (non-destructive workflow).
+
+### Chain Link mode requirements
+
+- Put the target mesh in **Edit Mode**.
+- Ensure the target mesh is the **active object**.
+- Select one continuous edge path/loop on the target mesh.
+- Run **Generate** from the Blendie Ares panel.
+
 ## Blender 5.2.1 Plugin Implementation Plan
 
 Goal: build a Blender addon that takes a pre-made "tile" mesh (selected by name or object selection) and distributes it over a target mesh with multiple layout modes (for example chain-like linking and dense surface fill where pieces touch/follow the target surface).
