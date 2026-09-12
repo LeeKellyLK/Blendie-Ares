@@ -38,6 +38,12 @@ def _compute_transforms_for_targets(context, settings, targets, preview):
     base_count = settings.preview_instances if preview else settings.max_instances
     depsgraph = context.evaluated_depsgraph_get()
     areas = [max(0.0, target_surface_area(target, depsgraph)) for target in targets]
+    valid_pairs = [(target, area) for target, area in zip(targets, areas) if area > 1e-10]
+    if not valid_pairs:
+        return []
+
+    targets = [pair[0] for pair in valid_pairs]
+    areas = [pair[1] for pair in valid_pairs]
     total_area = sum(areas)
 
     if total_area <= 1e-10:
@@ -145,6 +151,12 @@ class BLENDIEARES_OT_preview(bpy.types.Operator):
         for msg in messages:
             self.report({"WARNING"}, msg)
         transforms = _compute_transforms_for_targets(context, settings, targets, preview=True)
+        if not transforms:
+            self.report(
+                {"ERROR"},
+                "No instances generated. Check target mesh surface, spacing, density, and mode settings.",
+            )
+            return {"CANCELLED"}
         _build_instances(
             context,
             source,
@@ -176,6 +188,12 @@ class BLENDIEARES_OT_apply(bpy.types.Operator):
         for msg in messages:
             self.report({"WARNING"}, msg)
         transforms = _compute_transforms_for_targets(context, settings, targets, preview=False)
+        if not transforms:
+            self.report(
+                {"ERROR"},
+                "No instances generated. Check target mesh surface, spacing, density, and mode settings.",
+            )
+            return {"CANCELLED"}
         _build_instances(
             context,
             source,

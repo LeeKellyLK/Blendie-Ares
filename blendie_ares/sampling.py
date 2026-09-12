@@ -9,7 +9,7 @@ def _triangle_data(target_obj, depsgraph):
     mesh = eval_obj.to_mesh()
     mesh.calc_loop_triangles()
 
-    world = target_obj.matrix_world
+    world = eval_obj.matrix_world
     triangles = []
     for tri in mesh.loop_triangles:
         v0 = world @ mesh.vertices[tri.vertices[0]].co
