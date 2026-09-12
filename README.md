@@ -17,7 +17,7 @@ Blendie-Ares is a Blender add-on (targeting Blender **5.2.1**) for distributing 
   - active selection helper button
   - optional use of all selected mesh objects as targets
 - Distribution modes:
-  - **Chain**: sequential linked placement
+  - **Chain**: staggered chainmail-style surface coverage
   - **Fill**: area coverage with contact tolerance controls
   - **Guided**: tangent-informed orientation flow
 - Distribution strategies:

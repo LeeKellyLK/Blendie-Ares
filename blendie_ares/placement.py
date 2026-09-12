@@ -27,27 +27,60 @@ def _make_transform(sample, rng, settings):
     return transform
 
 
-def _chain_mode(samples, settings, rng, max_instances):
-    if not samples:
-        return []
-
+def _projection_axes(samples):
     points = [s["point"] for s in samples]
     mins = Vector((min(p.x for p in points), min(p.y for p in points), min(p.z for p in points)))
     maxs = Vector((max(p.x for p in points), max(p.y for p in points), max(p.z for p in points)))
     extent = maxs - mins
-    axis = max(range(3), key=lambda i: extent[i])
+    ordered = sorted(range(3), key=lambda i: extent[i], reverse=True)
+    return ordered[0], ordered[1]
 
-    ordered = sorted(samples, key=lambda s: s["point"][axis])
-    spacing = max(1e-5, settings.spacing * (1.0 - settings.contact_tolerance * 0.75))
+
+def _chain_mode(samples, settings, rng, max_instances):
+    if not samples:
+        return []
+
+    spacing = max(1e-5, settings.spacing * max(0.1, 1.0 - settings.contact_tolerance * 0.5))
+    row_step = max(1e-5, spacing * 0.8660254)
+    u_axis, v_axis = _projection_axes(samples)
+    min_u = min(s["point"][u_axis] for s in samples)
+    min_v = min(s["point"][v_axis] for s in samples)
+
+    buckets = {}
+    for sample in samples:
+        point = sample["point"]
+        local_u = point[u_axis] - min_u
+        local_v = point[v_axis] - min_v
+        row = int(local_v // row_step)
+        row_offset = 0.5 if (row % 2) else 0.0
+        col = int((local_u / spacing) - row_offset)
+
+        center_u = (col + row_offset + 0.5) * spacing
+        center_v = (row + 0.5) * row_step
+        score = (local_u - center_u) ** 2 + (local_v - center_v) ** 2
+
+        key = (row, col)
+        current = buckets.get(key)
+        if current is None or score < current[0]:
+            buckets[key] = (score, sample)
+
+    rows = {}
+    for (row, col), (_, sample) in buckets.items():
+        rows.setdefault(row, []).append((col, sample))
 
     selected = []
-    previous = None
-    for sample in ordered:
-        if previous is None or (sample["point"] - previous["point"]).length >= spacing:
+    for row in sorted(rows):
+        row_items = sorted(rows[row], key=lambda x: x[0], reverse=bool(row % 2))
+        for _, sample in row_items:
+            if row % 2:
+                sample = sample.copy()
+                alt_tangent = sample["normal"].cross(sample["tangent"])
+                if alt_tangent.length > 1e-8:
+                    alt_tangent.normalize()
+                    sample["tangent"] = alt_tangent
             selected.append(sample)
-            previous = sample
-        if len(selected) >= max_instances:
-            break
+            if len(selected) >= max_instances:
+                return selected
     return selected
 
 
@@ -58,8 +91,6 @@ def _fill_mode(samples, settings, rng, max_instances):
     candidates = list(samples)
     rng.shuffle(candidates)
     min_dist = max(1e-5, settings.spacing * (1.0 - settings.contact_tolerance))
-    target_dist = max(min_dist, settings.spacing)
-
     selected = []
     tries = 0
     idx = 0
@@ -79,9 +110,6 @@ def _fill_mode(samples, settings, rng, max_instances):
         nearest = min(selected, key=lambda s: (sample["point"] - s["point"]).length)
         nearest_dist = (sample["point"] - nearest["point"]).length
         if nearest_dist < min_dist:
-            continue
-
-        if nearest_dist > target_dist * (1.0 + settings.contact_tolerance):
             continue
 
         selected.append(sample)
