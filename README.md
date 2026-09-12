@@ -1,144 +1,115 @@
 # Blendie-Ares
 
-## Install in Blender 5.2.1
+Blendie-Ares is a Blender add-on (targeting Blender **5.2.1**) for distributing a source mesh across a target mesh in multiple placement modes.
 
-1. Open Blender.
-2. Go to **Edit → Preferences → Add-ons**.
-3. Click the menu in the top-right of the Add-ons panel and choose **Install from Disk...**.
-4. Select the `/home/runner/work/Blendie-Ares/Blendie-Ares/blendie_ares` folder (zip it first if your Blender install expects a zip package).
-5. Enable the **Blendie Ares** add-on.
+## Blender support
 
-## Quick usage
+- Primary target: **Blender 5.2.1**
+- Backward compatibility: not guaranteed in this MVP
 
-1. In **3D Viewport → Sidebar**, open the **Blendie Ares** tab.
-2. Set:
-   - **Source Tile**: your single source mesh object.
-   - **Target Mesh**: the mesh to populate.
-3. Choose mode:
-   - **Surface Fill**: distributed duplicates using spacing approximation.
-   - **Chain Link**: follows a selected edge loop/path.
-4. Set **Spacing**, and optionally **Fill Count**, **Normal Offset**, and **Seed**.
-5. Click **Generate**.
-6. Use **Clear** to remove only generated output (non-destructive workflow).
+## Features (MVP)
 
-### Chain Link mode requirements
+- Source mesh selection by:
+  - object name
+  - active selection helper button
+- Target mesh selection by:
+  - object name
+  - active selection helper button
+  - optional use of all selected mesh objects as targets
+- Distribution modes:
+  - **Chain**: staggered chainmail-style surface coverage
+  - **Fill**: area coverage with contact tolerance controls
+  - **Guided**: tangent-informed orientation flow
+- Distribution strategies:
+  - uniform
+  - random
+  - weighted by triangle area
+- Non-destructive linked-instance output by default
+- Optional convert-to-real meshes on apply
+- Preview / Apply / Clear workflow
 
-- Put the target mesh in **Edit Mode**.
-- Ensure the target mesh is the **active object**.
-- Select one continuous edge path/loop on the target mesh.
-- Run **Generate** from the Blendie Ares panel.
+## Add-on structure
 
-## Blender 5.2.1 Plugin Implementation Plan
+- `blendie_ares/__init__.py`  
+  Add-on metadata and registration entry point
+- `blendie_ares/properties.py`  
+  Scene-level add-on settings
+- `blendie_ares/ui.py`  
+  3D View sidebar panel
+- `blendie_ares/operators.py`  
+  Preview/Apply/Clear/selection operators
+- `blendie_ares/validation.py`  
+  Source/target resolution and validation
+- `blendie_ares/sampling.py`  
+  Surface sampling and orientation helpers
+- `blendie_ares/placement.py`  
+  Chain/fill/guided placement strategies
+- `blendie_ares/utils.py`  
+  Collection/output utility helpers
 
-Goal: build a Blender addon that takes a pre-made "tile" mesh (selected by name or object selection) and distributes it over a target mesh with multiple layout modes (for example chain-like linking and dense surface fill where pieces touch/follow the target surface).
+## Installation
 
-### 1) Scope and success criteria
+1. Open Blender 5.2.1.
+2. Go to `Edit > Preferences > Add-ons`.
+3. Click `Install...`.
+4. Select the packaged add-on `.zip` file (or `blendie_ares/__init__.py` if installing unpacked source).
+5. Enable **Blendie Ares**.
 
-- Blender version target: **5.2.1**
-- Input A: source tile mesh object (user chooses by:
-  - active selection, or
-  - name search from scene objects)
-- Input B: target mesh object to populate.
-- Output: generated instances arranged on/around the target mesh in selectable distribution mode.
+## Quick workflow
 
-Success criteria:
-- User can pick source + target in UI.
-- User can run at least two placement modes:
-  - **Chain/Link mode** (mail-like linked progression)
-  - **Surface Fill mode** (coverage with local orientation and spacing control)
-- Generation is repeatable with parameters and can be cleared/regenerated safely.
+1. In 3D Viewport, open sidebar (`N`) and the **Blendie Ares** tab.
+2. Set source object (name field or **Use Active as Source**).
+3. Set target object (name field or **Use Active as Target**).
+4. Choose mode and settings.
+5. Click **Preview** for draft output.
+6. Click **Apply** for final output.
+7. Click **Clear Generated** to remove generated collections.
 
-### 2) Minimal addon structure
+## Recommended starter presets
 
-- `blendie_ares/__init__.py`
-  - `bl_info`, register/unregister entrypoint.
-- `blendie_ares/properties.py`
-  - `PropertyGroup` for source name, mode, spacing, random seed, density.
-- `blendie_ares/operators.py`
-  - `OBJECT_OT_generate_pattern`
-  - `OBJECT_OT_clear_pattern`
-- `blendie_ares/panel.py`
-  - `VIEW3D` sidebar panel for configuration and execution.
-- `blendie_ares/generator.py`
-  - Core sampling/orientation/instancing logic.
+- Chain mail-like strips:
+  - Mode: `CHAIN`
+  - Distribution: `WEIGHTED`
+  - Spacing: `0.12`
+  - Rotation jitter: `5.0`
+  - Contact tolerance: `0.15`
+- Dense surface fill:
+  - Mode: `FILL`
+  - Distribution: `WEIGHTED`
+  - Spacing: `0.08`
+  - Density: `1.3`
+  - Contact tolerance: `0.20`
+- Flow-like guided layout:
+  - Mode: `GUIDED`
+  - Distribution: `UNIFORM`
+  - Spacing: `0.10`
+  - Rotation jitter: `7.5`
 
-### 3) Data & UX design
+## Manual validation matrix
 
-Addon panel fields:
-- Source object mode:
-  - "Use Active Object as Source"
-  - "Use Named Object" (+ searchable string/dropdown)
-- Target object picker.
-- Distribution mode enum:
-  - `CHAIN_LINK`
-  - `SURFACE_FILL`
-- Shared controls:
-  - spacing
-  - scale multiplier
-  - random rotation jitter
-  - random seed
-  - output collection name
-- Action buttons:
-  - Generate
-  - Clear Generated
+- Source shape variety: simple ring, elongated link, irregular mesh
+- Target topology: plane, sphere, curved manifold, non-manifold
+- Transform states: unapplied scale, mirrored scale, rotated objects
+- Density scales: low, medium, high
+- Mode checks:
+  - Chain continuity and spacing behavior
+  - Fill coverage and contact tolerance behavior
+  - Guided orientation consistency
+- Operational checks:
+  - Preview then Apply
+  - Clear cleanup
+  - Undo/redo stability
 
-Implementation detail:
-- Place generated objects into a dedicated collection (for non-destructive cleanup).
-- Prefer linked duplicates/instances for performance.
+## Acceptance criteria coverage
 
-### 4) Geometry generation approach
+- Source can be selected by name or active selection
+- At least two robust modes provided (Chain and Fill, plus Guided optional mode)
+- Reproducible output via random seed controls
+- Instancing-first workflow for practical scene performance
 
-#### A) Surface Fill mode
+## Post-MVP enhancements
 
-1. Evaluate target mesh in world space.
-2. Sample candidate points across faces (area-weighted sampling or geometry nodes-style point distribution logic in Python).
-3. For each point:
-   - compute face normal/tangent basis,
-   - align source instance local up-axis to normal,
-   - apply spacing rejection (minimum distance) to reduce overlap.
-4. Optionally project/offset along normal to avoid z-fighting.
-
-#### B) Chain/Link mode
-
-1. Build adjacency/path over target surface (edge-walk or curve path derived from selected direction axis/UV direction if available).
-2. Step along path by link length + spacing.
-3. Alternate instance rotation/orientation to imitate interlocking structure.
-4. Keep instances tangent to surface normal while preserving chain direction continuity.
-
-### 5) Safety, validation, and performance
-
-- Validate source and target are mesh objects before running.
-- Handle missing objects and empty mesh data with clear error messages.
-- Use depsgraph-evaluated mesh where needed.
-- Create/cleanup generated collection transactionally to prevent orphan objects.
-- Keep operations undo-friendly (`bl_options = {'REGISTER', 'UNDO'}`).
-
-### 6) Testing/verification strategy
-
-Given current repository has no existing test infrastructure:
-- Use manual verification in Blender:
-  1. Enable addon.
-  2. Create source tile mesh + target mesh.
-  3. Generate in both modes and verify:
-     - placement follows target,
-     - spacing responds to parameter changes,
-     - regenerate works,
-     - clear removes only generated output.
-
-### 7) Delivery phases
-
-1. **Phase 1**: addon scaffold + UI + object selection + clear/generate plumbing.
-2. **Phase 2**: implement Surface Fill mode.
-3. **Phase 3**: implement Chain/Link mode.
-4. **Phase 4**: stabilization, error handling, and Blender 5.2.1 verification pass.
-
-## Clarifying questions
-
-1. Should generated output be real duplicated mesh objects, collection instances, or geometry-nodes-based instances?
-2. For "touching each other," do you want strict collision/contact solving, or spacing-based approximation?
-3. In chain mode, should links follow:
-   - a user-selected edge loop/path,
-   - automatically derived surface direction, or
-   - a drawn curve object?
-4. Is non-destructive editing required (regenerate from saved parameters), or is one-time bake acceptable?
-5. Should the addon support only one source tile object, or a set of source variants for randomization?
+- Geodesic-aware chain progression over surface topology
+- Advanced packing heuristics and collision solvers
+- Optional curve/UV-guided direction fields
+- Spatial acceleration for very dense fills
