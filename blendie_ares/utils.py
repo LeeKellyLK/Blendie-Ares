@@ -4,11 +4,12 @@ PREVIEW_COLLECTION_NAME = "BlendieAres_Preview"
 RESULT_COLLECTION_NAME = "BlendieAres_Result"
 
 
-def get_or_create_collection(name: str) -> bpy.types.Collection:
+def get_or_create_collection(scene: bpy.types.Scene, name: str) -> bpy.types.Collection:
     collection = bpy.data.collections.get(name)
     if collection is None:
         collection = bpy.data.collections.new(name)
-        bpy.context.scene.collection.children.link(collection)
+    if collection.name not in [c.name for c in scene.collection.children]:
+        scene.collection.children.link(collection)
     return collection
 
 
@@ -39,4 +40,3 @@ def remove_collection(name: str):
         bpy.context.scene.collection.children.unlink(collection)
 
     bpy.data.collections.remove(collection)
-

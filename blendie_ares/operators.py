@@ -1,4 +1,5 @@
 import bpy
+from mathutils import Vector
 
 from .placement import generate_transforms
 from .sampling import sample_target_surface
@@ -13,15 +14,18 @@ from .validation import validate_configuration
 
 
 def _build_instances(context, source_obj, transforms, collection_name, convert_to_real, chunk_size):
-    collection = get_or_create_collection(collection_name)
+    collection = get_or_create_collection(context.scene, collection_name)
     clear_collection(collection_name)
+
+    source_basis = source_obj.matrix_world.copy()
+    source_basis.translation = Vector((0.0, 0.0, 0.0))
 
     created = []
     for idx, matrix in enumerate(transforms, start=1):
         inst = source_obj.copy()
         inst.data = source_obj.data
         inst.animation_data_clear()
-        inst.matrix_world = matrix
+        inst.matrix_world = matrix @ source_basis
         collection.objects.link(inst)
 
         if convert_to_real and inst.type == "MESH" and inst.data is not None:
@@ -37,11 +41,15 @@ def _build_instances(context, source_obj, transforms, collection_name, convert_t
 def _compute_transforms_for_targets(settings, targets, preview):
     total_target_count = max(1, len(targets))
     base_count = settings.preview_instances if preview else settings.max_instances
-    per_target_count = max(1, int(base_count / total_target_count))
+    base_per_target = base_count // total_target_count
+    remainder = base_count % total_target_count
 
     all_transforms = []
     for target_idx, target in enumerate(targets):
-        sample_count = max(1, int(per_target_count * settings.density))
+        target_quota = base_per_target + (1 if target_idx < remainder else 0)
+        if target_quota <= 0:
+            continue
+        sample_count = max(1, int(target_quota * settings.density))
         samples = sample_target_surface(
             target,
             sample_count,
@@ -172,4 +180,3 @@ def register():
 def unregister():
     for cls in reversed(CLASSES):
         bpy.utils.unregister_class(cls)
-
