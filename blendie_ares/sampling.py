@@ -31,9 +31,14 @@ def _triangle_data(target_obj, depsgraph):
     return triangles
 
 
+def target_surface_area(target_obj, depsgraph):
+    triangles = _triangle_data(target_obj, depsgraph)
+    return sum(t[5] for t in triangles)
+
+
 def _pick_triangle_index(mode, triangles, areas, rng, index):
     if mode == "UNIFORM":
-        return index % len(triangles)
+        return rng.choices(range(len(triangles)), weights=areas, k=1)[0]
     if mode == "RANDOM":
         return rng.randrange(0, len(triangles))
     return rng.choices(range(len(triangles)), weights=areas, k=1)[0]

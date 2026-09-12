@@ -1,7 +1,7 @@
 import bpy
 
 from .placement import generate_transforms
-from .sampling import sample_target_surface
+from .sampling import sample_target_surface, target_surface_area
 from .utils import (
     PREVIEW_COLLECTION_NAME,
     RESULT_COLLECTION_NAME,
@@ -13,8 +13,8 @@ from .validation import validate_configuration
 
 
 def _build_instances(context, source_obj, transforms, collection_name, convert_to_real, chunk_size):
-    clear_collection(collection_name, context.scene)
     collection = get_or_create_collection(context.scene, collection_name)
+    clear_collection(collection, context.scene)
 
     created = []
     for idx, matrix in enumerate(transforms, start=1):
@@ -35,15 +35,29 @@ def _build_instances(context, source_obj, transforms, collection_name, convert_t
 
 
 def _compute_transforms_for_targets(context, settings, targets, preview):
-    total_target_count = max(1, len(targets))
     base_count = settings.preview_instances if preview else settings.max_instances
-    base_per_target = base_count // total_target_count
-    remainder = base_count % total_target_count
     depsgraph = context.evaluated_depsgraph_get()
+    areas = [max(0.0, target_surface_area(target, depsgraph)) for target in targets]
+    total_area = sum(areas)
+
+    if total_area <= 1e-10:
+        quotas = [base_count // len(targets) for _ in targets]
+        for i in range(base_count % len(targets)):
+            quotas[i] += 1
+    else:
+        raw = [(area / total_area) * base_count for area in areas]
+        quotas = [int(value) for value in raw]
+        assigned = sum(quotas)
+        if assigned < base_count:
+            remainders = sorted(
+                ((raw[i] - quotas[i], i) for i in range(len(quotas))),
+                reverse=True,
+            )
+            for _, idx in remainders[: base_count - assigned]:
+                quotas[idx] += 1
 
     all_transforms = []
-    for target_idx, target in enumerate(targets):
-        target_quota = base_per_target + (1 if target_idx < remainder else 0)
+    for target_idx, (target, target_quota) in enumerate(zip(targets, quotas)):
         if target_quota <= 0:
             continue
         sample_count = max(1, int(target_quota * settings.density))
@@ -151,7 +165,9 @@ class BLENDIEARES_OT_apply(bpy.types.Operator):
             convert_to_real=settings.convert_to_real,
             chunk_size=settings.chunk_size,
         )
-        clear_collection(PREVIEW_COLLECTION_NAME, context.scene)
+        preview_collection = bpy.data.collections.get(PREVIEW_COLLECTION_NAME)
+        if preview_collection is not None:
+            clear_collection(preview_collection, context.scene)
         self.report({"INFO"}, f"Applied: {len(transforms)} instances.")
         return {"FINISHED"}
 

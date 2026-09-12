@@ -13,12 +13,7 @@ def get_or_create_collection(scene: bpy.types.Scene, name: str) -> bpy.types.Col
     return collection
 
 
-def clear_collection(name: str, scene: bpy.types.Scene | None = None):
-    scene = scene or bpy.context.scene
-    collection = bpy.data.collections.get(name)
-    if collection is None:
-        return
-
+def clear_collection(collection: bpy.types.Collection, scene: bpy.types.Scene):
     for obj in list(collection.objects):
         bpy.data.objects.remove(obj, do_unlink=True)
 
