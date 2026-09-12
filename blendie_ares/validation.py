@@ -12,7 +12,7 @@ def resolve_source(context, settings):
     return source, ""
 
 
-def resolve_targets(context, settings):
+def resolve_targets(context, settings, source=None):
     targets = []
     if settings.use_selected_targets:
         targets = [obj for obj in context.selected_objects if _is_mesh_object(obj)]
@@ -20,6 +20,9 @@ def resolve_targets(context, settings):
         target = context.scene.objects.get(settings.target_object_name)
         if _is_mesh_object(target):
             targets = [target]
+
+    if source is not None:
+        targets = [obj for obj in targets if obj.name != source.name]
 
     if not targets:
         return [], "At least one valid mesh target is required."
@@ -55,7 +58,7 @@ def validate_configuration(context, settings):
     if source_error:
         return None, [], [source_error]
 
-    targets, target_error = resolve_targets(context, settings)
+    targets, target_error = resolve_targets(context, settings, source=source)
     if target_error:
         return source, [], [target_error]
 
@@ -65,4 +68,3 @@ def validate_configuration(context, settings):
         warnings.append("Source and target are the same object; result may self-overlap.")
 
     return source, targets, warnings
-

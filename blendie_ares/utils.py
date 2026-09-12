@@ -19,12 +19,7 @@ def clear_collection(name: str, scene: bpy.types.Scene | None = None):
     if collection is None:
         return
 
-    for obj in list(collection.objects):
-        bpy.data.objects.remove(obj, do_unlink=True)
-
-    while collection.children:
-        child = collection.children[0]
-        _remove_collection_tree(child, scene)
+    _clear_collection_tree(collection)
 
 
 def remove_collection(name: str, scene: bpy.types.Scene | None = None):
@@ -51,3 +46,10 @@ def _remove_collection_tree(collection: bpy.types.Collection, scene: bpy.types.S
         scene.collection.children.unlink(collection)
 
     bpy.data.collections.remove(collection)
+
+
+def _clear_collection_tree(collection: bpy.types.Collection):
+    for obj in list(collection.objects):
+        bpy.data.objects.remove(obj, do_unlink=True)
+    for child in list(collection.children):
+        _clear_collection_tree(child)

@@ -82,11 +82,7 @@ def _fill_mode(samples, settings, rng, max_instances):
             continue
 
         if nearest_dist > target_dist * (1.0 + settings.contact_tolerance):
-            direction = (sample["point"] - nearest["point"])
-            if direction.length > 1e-8:
-                direction.normalize()
-                sample = sample.copy()
-                sample["point"] = nearest["point"] + direction * target_dist
+            continue
 
         selected.append(sample)
 
