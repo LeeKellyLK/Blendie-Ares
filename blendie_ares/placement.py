@@ -91,6 +91,7 @@ def _fill_mode(samples, settings, rng, max_instances):
     candidates = list(samples)
     rng.shuffle(candidates)
     min_dist = max(1e-5, settings.spacing * (1.0 - settings.contact_tolerance))
+    min_dist_sq = min_dist * min_dist
     selected = []
     tries = 0
     idx = 0
@@ -107,9 +108,8 @@ def _fill_mode(samples, settings, rng, max_instances):
             selected.append(sample)
             continue
 
-        nearest = min(selected, key=lambda s: (sample["point"] - s["point"]).length)
-        nearest_dist = (sample["point"] - nearest["point"]).length
-        if nearest_dist < min_dist:
+        nearest_dist_sq = min((sample["point"] - s["point"]).length_squared for s in selected)
+        if nearest_dist_sq < min_dist_sq:
             continue
 
         selected.append(sample)

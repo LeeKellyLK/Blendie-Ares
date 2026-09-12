@@ -21,10 +21,16 @@ def resolve_targets(context, settings, source=None):
         if _is_mesh_object(target):
             targets = [target]
 
+    included_source = False
+    if source is not None:
+        included_source = any(obj.name == source.name for obj in targets)
+
     if source is not None:
         targets = [obj for obj in targets if obj.name != source.name]
 
     if not targets:
+        if included_source:
+            return [], "Source and target cannot be the same object."
         return [], "At least one valid mesh target is required."
     return targets, ""
 
@@ -63,8 +69,5 @@ def validate_configuration(context, settings):
         return source, [], [target_error]
 
     warnings = validate_transforms(source, targets)
-
-    if source.name in [t.name for t in targets]:
-        warnings.append("Source and target are the same object; result may self-overlap.")
 
     return source, targets, warnings
