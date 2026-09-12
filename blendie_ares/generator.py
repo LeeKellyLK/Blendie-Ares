@@ -100,11 +100,22 @@ def _ordered_edge_loop_vertices(target_obj: bpy.types.Object) -> List[int]:
     if len(endpoints) not in (0, 2):
         raise ValueError("Selected edges must form one continuous path or closed loop")
 
+    active = bm.select_history.active if bm.select_history else None
+
     if endpoints:
         start = endpoints[0]
+        active_endpoint = None
+        if isinstance(active, bmesh.types.BMVert) and active.select and active.index in endpoints:
+            active_endpoint = active.index
+        elif isinstance(active, bmesh.types.BMEdge) and active.select:
+            edge_verts = {active.verts[0].index, active.verts[1].index}
+            endpoint_hits = [ep for ep in endpoints if ep in edge_verts]
+            if endpoint_hits:
+                active_endpoint = endpoint_hits[0]
+        if active_endpoint is not None:
+            start = active_endpoint
     else:
         start = min(adjacency.keys())
-        active = bm.select_history.active if bm.select_history else None
         if isinstance(active, bmesh.types.BMVert) and active.select and active.index in adjacency:
             start = active.index
         elif isinstance(active, bmesh.types.BMEdge) and active.select:
@@ -149,6 +160,8 @@ def _polyline_points(vertices: Iterable[Vector], step: float) -> List[Vector]:
             continue
         direction = seg / length
         dist = max(step - carry, 0.0)
+        if i == 0 and dist <= 0.0:
+            dist = step
         while dist <= length:
             out.append(a + direction * dist)
             dist += step
