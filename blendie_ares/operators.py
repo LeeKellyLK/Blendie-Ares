@@ -13,6 +13,7 @@ class OBJECT_OT_blendie_ares_generate(bpy.types.Operator):
         props = context.scene.blendie_ares
         try:
             generator.generate(
+                depsgraph=context.evaluated_depsgraph_get(),
                 scene=context.scene,
                 source_obj=props.source_object,
                 target_obj=props.target_object,

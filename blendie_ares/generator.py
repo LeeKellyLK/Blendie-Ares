@@ -40,7 +40,7 @@ def _duplicate_at(
     rotation_quaternion,
 ):
     new_obj = source_obj.copy()
-    new_obj.data = source_obj.data.copy()
+    new_obj.data = source_obj.data
     new_obj.location = location
     new_obj.rotation_mode = "QUATERNION"
     new_obj.rotation_quaternion = rotation_quaternion
@@ -199,6 +199,7 @@ def generate_chain_link(
     collection: bpy.types.Collection,
     spacing: float,
     normal_offset: float,
+    depsgraph,
 ):
     ordered_indices = _ordered_edge_loop_vertices(target_obj)
     mesh = target_obj.data
@@ -207,7 +208,6 @@ def generate_chain_link(
     if len(chain_points) < 2:
         raise ValueError("Selected edge loop path is too short for generation")
 
-    depsgraph = bpy.context.evaluated_depsgraph_get()
     bvh = BVHTree.FromObject(target_obj, depsgraph)
     if bvh is None:
         raise ValueError("Could not build target mesh spatial data")
@@ -229,6 +229,7 @@ def generate_chain_link(
 
 
 def generate(
+    depsgraph,
     scene: bpy.types.Scene,
     source_obj: bpy.types.Object,
     target_obj: bpy.types.Object,
@@ -253,7 +254,7 @@ def generate(
     if mode == "SURFACE_FILL":
         generate_surface_fill(source_obj, target_obj, collection, spacing, fill_count, normal_offset)
     elif mode == "CHAIN_LINK":
-        generate_chain_link(source_obj, target_obj, collection, spacing, normal_offset)
+        generate_chain_link(source_obj, target_obj, collection, spacing, normal_offset, depsgraph)
     else:
         raise ValueError(f"Unsupported mode: {mode}")
 
