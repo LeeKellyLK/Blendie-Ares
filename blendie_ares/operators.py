@@ -11,6 +11,13 @@ class OBJECT_OT_blendie_ares_generate(bpy.types.Operator):
 
     def execute(self, context):
         props = context.scene.blendie_ares
+        if props.mode == "CHAIN_LINK":
+            if props.target_object is None or props.target_object.mode != "EDIT":
+                self.report({"ERROR"}, "Chain Link mode requires target mesh in Edit Mode")
+                return {"CANCELLED"}
+            if context.object != props.target_object:
+                self.report({"ERROR"}, "Chain Link mode requires the target mesh to be the active Edit Mode object")
+                return {"CANCELLED"}
         try:
             generator.generate(
                 depsgraph=context.evaluated_depsgraph_get(),

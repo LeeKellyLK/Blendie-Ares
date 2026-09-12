@@ -52,9 +52,11 @@ def _duplicate_at(
 
 def _orientation_from_tangent_normal(tangent: Vector, normal: Vector):
     forward = tangent.normalized()
-    up = normal.normalized()
-    if abs(forward.dot(up)) > 0.999:
-        up = Vector((1.0, 0.0, 0.0)) if abs(forward.x) < 0.9 else Vector((0.0, 1.0, 0.0))
+    up = normal - forward * normal.dot(forward)
+    if up.length < 1e-6:
+        fallback = Vector((1.0, 0.0, 0.0)) if abs(forward.x) < 0.9 else Vector((0.0, 1.0, 0.0))
+        up = fallback - forward * fallback.dot(forward)
+    up = up.normalized()
     right = forward.cross(up).normalized()
     up = right.cross(forward).normalized()
     matrix = Matrix((
@@ -245,7 +247,7 @@ def generate_chain_link(
             tangent = Vector((1.0, 0.0, 0.0))
 
         nearest = bvh.find_nearest(point)
-        raw_normal = nearest[2] if nearest else Vector((0.0, 0.0, 1.0))
+        raw_normal = nearest[1] if nearest else Vector((0.0, 0.0, 1.0))
         normal = (normal_matrix @ raw_normal).normalized()
         rot = _orientation_from_tangent_normal(tangent, normal)
         if i % 2:
