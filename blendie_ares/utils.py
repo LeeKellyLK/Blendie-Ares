@@ -13,7 +13,8 @@ def get_or_create_collection(scene: bpy.types.Scene, name: str) -> bpy.types.Col
     return collection
 
 
-def clear_collection(name: str):
+def clear_collection(name: str, scene: bpy.types.Scene | None = None):
+    scene = scene or bpy.context.scene
     collection = bpy.data.collections.get(name)
     if collection is None:
         return
@@ -22,20 +23,21 @@ def clear_collection(name: str):
         bpy.data.objects.remove(obj, do_unlink=True)
 
     for child in list(collection.children):
-        _remove_collection_tree(child)
+        _remove_collection_tree(child, scene)
 
 
-def remove_collection(name: str):
+def remove_collection(name: str, scene: bpy.types.Scene | None = None):
+    scene = scene or bpy.context.scene
     collection = bpy.data.collections.get(name)
     if collection is None:
         return
 
-    _remove_collection_tree(collection)
+    _remove_collection_tree(collection, scene)
 
 
-def _remove_collection_tree(collection: bpy.types.Collection):
+def _remove_collection_tree(collection: bpy.types.Collection, scene: bpy.types.Scene):
     for child in list(collection.children):
-        _remove_collection_tree(child)
+        _remove_collection_tree(child, scene)
 
     for obj in list(collection.objects):
         bpy.data.objects.remove(obj, do_unlink=True)
@@ -44,7 +46,7 @@ def _remove_collection_tree(collection: bpy.types.Collection):
         if collection.name in [c.name for c in parent.children]:
             parent.children.unlink(collection)
 
-    if collection.name in [c.name for c in bpy.context.scene.collection.children]:
-        bpy.context.scene.collection.children.unlink(collection)
+    if collection.name in [c.name for c in scene.collection.children]:
+        scene.collection.children.unlink(collection)
 
     bpy.data.collections.remove(collection)

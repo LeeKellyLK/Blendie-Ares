@@ -55,7 +55,8 @@ def _fill_mode(samples, settings, rng):
     if not samples:
         return []
 
-    rng.shuffle(samples)
+    candidates = list(samples)
+    rng.shuffle(candidates)
     min_dist = max(1e-5, settings.spacing * (1.0 - settings.contact_tolerance))
     target_dist = max(min_dist, settings.spacing)
 
@@ -63,11 +64,11 @@ def _fill_mode(samples, settings, rng):
     tries = 0
     idx = 0
     while (
-        idx < len(samples)
+        idx < len(candidates)
         and len(selected) < settings.max_instances
         and tries < settings.max_iterations
     ):
-        sample = samples[idx]
+        sample = candidates[idx]
         idx += 1
         tries += 1
 
@@ -116,4 +117,3 @@ def generate_transforms(samples, settings):
     rng = random.Random(settings.random_seed + 17)
     selected = select_samples_for_mode(samples, settings)
     return [_make_transform(sample, rng, settings) for sample in selected]
-

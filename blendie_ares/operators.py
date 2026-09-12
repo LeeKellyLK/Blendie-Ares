@@ -1,5 +1,4 @@
 import bpy
-from mathutils import Vector
 
 from .placement import generate_transforms
 from .sampling import sample_target_surface
@@ -14,18 +13,15 @@ from .validation import validate_configuration
 
 
 def _build_instances(context, source_obj, transforms, collection_name, convert_to_real, chunk_size):
-    clear_collection(collection_name)
+    clear_collection(collection_name, context.scene)
     collection = get_or_create_collection(context.scene, collection_name)
-
-    source_basis = source_obj.matrix_world.copy()
-    source_basis.translation = Vector((0.0, 0.0, 0.0))
 
     created = []
     for idx, matrix in enumerate(transforms, start=1):
         inst = source_obj.copy()
         inst.data = source_obj.data
         inst.animation_data_clear()
-        inst.matrix_world = matrix @ source_basis
+        inst.matrix_world = matrix
         collection.objects.link(inst)
 
         if convert_to_real and inst.type == "MESH" and inst.data is not None:
@@ -149,7 +145,7 @@ class BLENDIEARES_OT_apply(bpy.types.Operator):
             convert_to_real=settings.convert_to_real,
             chunk_size=settings.chunk_size,
         )
-        clear_collection(PREVIEW_COLLECTION_NAME)
+        clear_collection(PREVIEW_COLLECTION_NAME, context.scene)
         self.report({"INFO"}, f"Applied: {len(transforms)} instances.")
         return {"FINISHED"}
 
@@ -161,8 +157,8 @@ class BLENDIEARES_OT_clear(bpy.types.Operator):
     bl_options = {"REGISTER", "UNDO"}
 
     def execute(self, context):
-        remove_collection(PREVIEW_COLLECTION_NAME)
-        remove_collection(RESULT_COLLECTION_NAME)
+        remove_collection(PREVIEW_COLLECTION_NAME, context.scene)
+        remove_collection(RESULT_COLLECTION_NAME, context.scene)
         context.scene.blendie_ares.warning_message = ""
         self.report({"INFO"}, "Cleared generated output.")
         return {"FINISHED"}
