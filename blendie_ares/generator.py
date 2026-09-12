@@ -54,7 +54,7 @@ def _orientation_from_tangent_normal(tangent: Vector, normal: Vector):
     forward = tangent.normalized()
     up = normal.normalized()
     if abs(forward.dot(up)) > 0.999:
-        up = Vector((0.0, 0.0, 1.0))
+        up = Vector((1.0, 0.0, 0.0)) if abs(forward.x) < 0.9 else Vector((0.0, 1.0, 0.0))
     right = forward.cross(up).normalized()
     up = right.cross(forward).normalized()
     matrix = Matrix((
@@ -158,6 +158,7 @@ def _build_world_bvh_from_object(target_obj: bpy.types.Object, depsgraph):
 
 
 def generate_surface_fill(
+    depsgraph,
     source_obj: bpy.types.Object,
     target_obj: bpy.types.Object,
     collection: bpy.types.Collection,
@@ -165,49 +166,55 @@ def generate_surface_fill(
     max_count: int,
     normal_offset: float,
 ):
-    mesh = target_obj.data
-    mesh.calc_loop_triangles()
-    triangles = mesh.loop_triangles
-    if not triangles:
-        raise ValueError("Target mesh has no triangles to sample")
+    eval_obj = target_obj.evaluated_get(depsgraph)
+    eval_mesh = eval_obj.to_mesh()
+    if eval_mesh is None:
+        raise ValueError("Could not evaluate target mesh")
+    try:
+        eval_mesh.calc_loop_triangles()
+        triangles = eval_mesh.loop_triangles
+        if not triangles:
+            raise ValueError("Target mesh has no triangles to sample")
 
-    world = target_obj.matrix_world
-    normal_matrix = world.to_3x3().inverted().transposed()
-    weighted = []
-    total_area = 0.0
-    for tri in triangles:
-        verts = [world @ mesh.vertices[i].co for i in tri.vertices]
-        area = (verts[1] - verts[0]).cross(verts[2] - verts[0]).length * 0.5
-        if area > 0:
-            total_area += area
-            weighted.append((total_area, tri, verts))
-    if total_area <= 0:
-        raise ValueError("Target mesh triangles have zero total area")
+        world = eval_obj.matrix_world
+        normal_matrix = world.to_3x3().inverted().transposed()
+        weighted = []
+        total_area = 0.0
+        for tri in triangles:
+            verts = [world @ eval_mesh.vertices[i].co for i in tri.vertices]
+            area = (verts[1] - verts[0]).cross(verts[2] - verts[0]).length * 0.5
+            if area > 0:
+                total_area += area
+                weighted.append((total_area, tri, verts))
+        if total_area <= 0:
+            raise ValueError("Target mesh triangles have zero total area")
 
-    placed_points: List[Vector] = []
-    attempts = max_count * 30
-    for _ in range(attempts):
-        if len(placed_points) >= max_count:
-            break
-        pick = random.uniform(0.0, total_area)
-        tri, verts = None, None
-        for cumulative, t, v in weighted:
-            if pick <= cumulative:
-                tri, verts = t, v
+        placed_points: List[Vector] = []
+        attempts = max_count * 30
+        for _ in range(attempts):
+            if len(placed_points) >= max_count:
                 break
-        if tri is None:
-            continue
+            pick = random.uniform(0.0, total_area)
+            tri, verts = None, None
+            for cumulative, t, v in weighted:
+                if pick <= cumulative:
+                    tri, verts = t, v
+                    break
+            if tri is None:
+                continue
 
-        candidate = _sample_triangle_point(verts[0], verts[1], verts[2])
-        if any((candidate - p).length < spacing for p in placed_points):
-            continue
+            candidate = _sample_triangle_point(verts[0], verts[1], verts[2])
+            if any((candidate - p).length < spacing for p in placed_points):
+                continue
 
-        normal = (normal_matrix @ tri.normal).normalized()
-        tangent = (verts[1] - verts[0]).normalized()
-        rot = _orientation_from_tangent_normal(tangent, normal)
-        loc = candidate + normal * normal_offset
-        _duplicate_at(source_obj, collection, loc, rot)
-        placed_points.append(candidate)
+            normal = (normal_matrix @ tri.normal).normalized()
+            tangent = (verts[1] - verts[0]).normalized()
+            rot = _orientation_from_tangent_normal(tangent, normal)
+            loc = candidate + normal * normal_offset
+            _duplicate_at(source_obj, collection, loc, rot)
+            placed_points.append(candidate)
+    finally:
+        eval_obj.to_mesh_clear()
 
 
 def generate_chain_link(
@@ -269,7 +276,7 @@ def generate(
     clear_generated(collection)
 
     if mode == "SURFACE_FILL":
-        generate_surface_fill(source_obj, target_obj, collection, spacing, fill_count, normal_offset)
+        generate_surface_fill(depsgraph, source_obj, target_obj, collection, spacing, fill_count, normal_offset)
     elif mode == "CHAIN_LINK":
         generate_chain_link(source_obj, target_obj, collection, spacing, normal_offset, depsgraph)
     else:
