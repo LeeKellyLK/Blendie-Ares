@@ -14,8 +14,8 @@ from .validation import validate_configuration
 
 
 def _build_instances(context, source_obj, transforms, collection_name, convert_to_real, chunk_size):
-    collection = get_or_create_collection(context.scene, collection_name)
     clear_collection(collection_name)
+    collection = get_or_create_collection(context.scene, collection_name)
 
     source_basis = source_obj.matrix_world.copy()
     source_basis.translation = Vector((0.0, 0.0, 0.0))
@@ -67,6 +67,7 @@ class BLENDIEARES_OT_use_active_source(bpy.types.Operator):
     bl_idname = "blendie_ares.use_active_source"
     bl_label = "Use Active as Source"
     bl_description = "Assign active object name as source"
+    bl_options = {"REGISTER", "UNDO"}
 
     def execute(self, context):
         settings = context.scene.blendie_ares
@@ -82,6 +83,7 @@ class BLENDIEARES_OT_use_active_target(bpy.types.Operator):
     bl_idname = "blendie_ares.use_active_target"
     bl_label = "Use Active as Target"
     bl_description = "Assign active object name as target"
+    bl_options = {"REGISTER", "UNDO"}
 
     def execute(self, context):
         settings = context.scene.blendie_ares
@@ -97,6 +99,7 @@ class BLENDIEARES_OT_preview(bpy.types.Operator):
     bl_idname = "blendie_ares.preview"
     bl_label = "Preview"
     bl_description = "Generate draft preview using linked mesh instances"
+    bl_options = {"REGISTER", "UNDO"}
 
     def execute(self, context):
         settings = context.scene.blendie_ares
@@ -125,6 +128,7 @@ class BLENDIEARES_OT_apply(bpy.types.Operator):
     bl_idname = "blendie_ares.apply"
     bl_label = "Apply"
     bl_description = "Generate final output using configured settings"
+    bl_options = {"REGISTER", "UNDO"}
 
     def execute(self, context):
         settings = context.scene.blendie_ares
@@ -154,6 +158,7 @@ class BLENDIEARES_OT_clear(bpy.types.Operator):
     bl_idname = "blendie_ares.clear_generated"
     bl_label = "Clear Generated"
     bl_description = "Remove generated preview and result objects"
+    bl_options = {"REGISTER", "UNDO"}
 
     def execute(self, context):
         remove_collection(PREVIEW_COLLECTION_NAME)

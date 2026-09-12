@@ -22,7 +22,7 @@ def clear_collection(name: str):
         bpy.data.objects.remove(obj, do_unlink=True)
 
     for child in list(collection.children):
-        collection.children.unlink(child)
+        _remove_collection_tree(child)
 
 
 def remove_collection(name: str):
@@ -30,7 +30,15 @@ def remove_collection(name: str):
     if collection is None:
         return
 
-    clear_collection(name)
+    _remove_collection_tree(collection)
+
+
+def _remove_collection_tree(collection: bpy.types.Collection):
+    for child in list(collection.children):
+        _remove_collection_tree(child)
+
+    for obj in list(collection.objects):
+        bpy.data.objects.remove(obj, do_unlink=True)
 
     for parent in bpy.data.collections:
         if collection.name in [c.name for c in parent.children]:
