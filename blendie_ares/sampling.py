@@ -54,8 +54,7 @@ def _sample_point_on_triangle(v0, v1, v2, rng):
     return (v0 * a) + (v1 * b) + (v2 * c)
 
 
-def sample_target_surface(target_obj, count, distribution, seed, depsgraph=None):
-    depsgraph = depsgraph or bpy.context.evaluated_depsgraph_get()
+def sample_target_surface(target_obj, count, distribution, seed, depsgraph):
     triangles = _triangle_data(target_obj, depsgraph)
     if not triangles:
         return []
