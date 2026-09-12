@@ -85,7 +85,9 @@ def _compute_transforms_for_targets(context, settings, targets, preview):
     for target_idx, (target, target_quota) in enumerate(zip(targets, quotas)):
         if target_quota <= 0:
             continue
-        sample_count = max(1, int(target_quota * settings.density))
+        sample_count = int(round(target_quota * settings.density))
+        if sample_count <= 0:
+            continue
         samples = sample_target_surface(
             target,
             sample_count,
@@ -152,6 +154,9 @@ class BLENDIEARES_OT_preview(bpy.types.Operator):
             self.report({"WARNING"}, msg)
         transforms = _compute_transforms_for_targets(context, settings, targets, preview=True)
         if not transforms:
+            preview_collection = bpy.data.collections.get(PREVIEW_COLLECTION_NAME)
+            if preview_collection is not None:
+                clear_collection(preview_collection, context.scene)
             self.report(
                 {"ERROR"},
                 "No instances generated. Check target mesh surface, spacing, density, and mode settings.",
@@ -189,6 +194,9 @@ class BLENDIEARES_OT_apply(bpy.types.Operator):
             self.report({"WARNING"}, msg)
         transforms = _compute_transforms_for_targets(context, settings, targets, preview=False)
         if not transforms:
+            result_collection = bpy.data.collections.get(RESULT_COLLECTION_NAME)
+            if result_collection is not None:
+                clear_collection(result_collection, context.scene)
             self.report(
                 {"ERROR"},
                 "No instances generated. Check target mesh surface, spacing, density, and mode settings.",
