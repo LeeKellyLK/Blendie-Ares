@@ -2,6 +2,7 @@ import bpy
 
 
 class BlendieAresProperties(bpy.types.PropertyGroup):
+    scene_uid: bpy.props.StringProperty(default="", options={"HIDDEN"})
     source_object_name: bpy.props.StringProperty(name="Source")
     target_object_name: bpy.props.StringProperty(name="Target")
     use_selected_targets: bpy.props.BoolProperty(
@@ -103,4 +104,3 @@ def register():
 def unregister():
     del bpy.types.Scene.blendie_ares
     bpy.utils.unregister_class(BlendieAresProperties)
-

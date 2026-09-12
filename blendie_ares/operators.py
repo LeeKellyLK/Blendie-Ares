@@ -1,8 +1,10 @@
 import bpy
+import uuid
 
 from .placement import generate_transforms
 from .sampling import sample_target_surface, target_surface_area
 from .utils import (
+    GENERATED_KEY,
     PREVIEW_COLLECTION_NAME,
     RESULT_COLLECTION_NAME,
     clear_collection,
@@ -12,13 +14,27 @@ from .utils import (
 from .validation import validate_configuration
 
 
-def _scene_collection_name(scene, base_name):
-    return f"{base_name}_{scene.name}"
+def _scene_owner_id(settings):
+    if not settings.scene_uid:
+        settings.scene_uid = uuid.uuid4().hex
+    return settings.scene_uid
 
 
-def _build_instances(context, source_obj, transforms, collection_name, convert_to_real, chunk_size):
-    collection = get_or_create_collection(context.scene, collection_name)
-    clear_collection(collection, context.scene)
+def _scene_collection_name(settings, base_name):
+    return f"{base_name}_{_scene_owner_id(settings)}"
+
+
+def _build_instances(
+    context,
+    source_obj,
+    transforms,
+    collection_name,
+    owner_id,
+    convert_to_real,
+    chunk_size,
+):
+    collection = get_or_create_collection(context.scene, collection_name, owner_id)
+    clear_collection(collection, context.scene, owner_id)
 
     created = []
     for idx, matrix in enumerate(transforms, start=1):
@@ -26,6 +42,7 @@ def _build_instances(context, source_obj, transforms, collection_name, convert_t
         inst.data = source_obj.data
         inst.animation_data_clear()
         inst.matrix_world = matrix
+        inst[GENERATED_KEY] = True
         collection.objects.link(inst)
 
         if convert_to_real and inst.type == "MESH" and inst.data is not None:
@@ -159,10 +176,10 @@ class BLENDIEARES_OT_preview(bpy.types.Operator):
         transforms = _compute_transforms_for_targets(context, settings, targets, preview=True)
         if not transforms:
             preview_collection = bpy.data.collections.get(
-                _scene_collection_name(context.scene, PREVIEW_COLLECTION_NAME)
+                _scene_collection_name(settings, PREVIEW_COLLECTION_NAME)
             )
             if preview_collection is not None:
-                clear_collection(preview_collection, context.scene)
+                clear_collection(preview_collection, context.scene, _scene_owner_id(settings))
             self.report(
                 {"ERROR"},
                 "No instances generated. Check target mesh surface, spacing, density, and mode settings.",
@@ -172,7 +189,8 @@ class BLENDIEARES_OT_preview(bpy.types.Operator):
             context,
             source,
             transforms,
-            _scene_collection_name(context.scene, PREVIEW_COLLECTION_NAME),
+            _scene_collection_name(settings, PREVIEW_COLLECTION_NAME),
+            _scene_owner_id(settings),
             convert_to_real=False,
             chunk_size=settings.chunk_size,
         )
@@ -201,10 +219,10 @@ class BLENDIEARES_OT_apply(bpy.types.Operator):
         transforms = _compute_transforms_for_targets(context, settings, targets, preview=False)
         if not transforms:
             result_collection = bpy.data.collections.get(
-                _scene_collection_name(context.scene, RESULT_COLLECTION_NAME)
+                _scene_collection_name(settings, RESULT_COLLECTION_NAME)
             )
             if result_collection is not None:
-                clear_collection(result_collection, context.scene)
+                clear_collection(result_collection, context.scene, _scene_owner_id(settings))
             self.report(
                 {"ERROR"},
                 "No instances generated. Check target mesh surface, spacing, density, and mode settings.",
@@ -214,15 +232,16 @@ class BLENDIEARES_OT_apply(bpy.types.Operator):
             context,
             source,
             transforms,
-            _scene_collection_name(context.scene, RESULT_COLLECTION_NAME),
+            _scene_collection_name(settings, RESULT_COLLECTION_NAME),
+            _scene_owner_id(settings),
             convert_to_real=settings.convert_to_real,
             chunk_size=settings.chunk_size,
         )
         preview_collection = bpy.data.collections.get(
-            _scene_collection_name(context.scene, PREVIEW_COLLECTION_NAME)
+            _scene_collection_name(settings, PREVIEW_COLLECTION_NAME)
         )
         if preview_collection is not None:
-            clear_collection(preview_collection, context.scene)
+            clear_collection(preview_collection, context.scene, _scene_owner_id(settings))
         self.report({"INFO"}, f"Applied: {len(transforms)} instances.")
         return {"FINISHED"}
 
@@ -234,9 +253,19 @@ class BLENDIEARES_OT_clear(bpy.types.Operator):
     bl_options = {"REGISTER", "UNDO"}
 
     def execute(self, context):
-        remove_collection(_scene_collection_name(context.scene, PREVIEW_COLLECTION_NAME), context.scene)
-        remove_collection(_scene_collection_name(context.scene, RESULT_COLLECTION_NAME), context.scene)
-        context.scene.blendie_ares.warning_message = ""
+        settings = context.scene.blendie_ares
+        owner_id = _scene_owner_id(settings)
+        remove_collection(
+            _scene_collection_name(settings, PREVIEW_COLLECTION_NAME),
+            context.scene,
+            owner_id=owner_id,
+        )
+        remove_collection(
+            _scene_collection_name(settings, RESULT_COLLECTION_NAME),
+            context.scene,
+            owner_id=owner_id,
+        )
+        settings.warning_message = ""
         self.report({"INFO"}, "Cleared generated output.")
         return {"FINISHED"}
 
