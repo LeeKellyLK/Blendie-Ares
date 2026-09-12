@@ -26,7 +26,7 @@ def clear_collection(collection: bpy.types.Collection, scene: bpy.types.Scene, o
 
     for obj in list(collection.objects):
         if obj.get(GENERATED_KEY):
-            bpy.data.objects.remove(obj, do_unlink=True)
+            _unlink_or_remove_generated_object(collection, obj)
 
     for child in list(collection.children):
         if child.get(OWNER_KEY) == owner_id:
@@ -60,7 +60,7 @@ def _remove_collection_tree(
 
     for obj in list(collection.objects):
         if owner_id is None or obj.get(GENERATED_KEY):
-            bpy.data.objects.remove(obj, do_unlink=True)
+            _unlink_or_remove_generated_object(collection, obj)
 
     for parent in bpy.data.collections:
         if collection.name in [c.name for c in parent.children]:
@@ -70,3 +70,10 @@ def _remove_collection_tree(
         scene.collection.children.unlink(collection)
 
     bpy.data.collections.remove(collection)
+
+
+def _unlink_or_remove_generated_object(collection: bpy.types.Collection, obj: bpy.types.Object):
+    if obj.name in [o.name for o in collection.objects]:
+        collection.objects.unlink(obj)
+    if len(obj.users_collection) == 0:
+        bpy.data.objects.remove(obj, do_unlink=True)
