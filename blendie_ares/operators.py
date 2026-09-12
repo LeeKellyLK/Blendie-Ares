@@ -52,7 +52,7 @@ def _compute_transforms_for_targets(settings, targets, preview):
             settings.distribution,
             settings.random_seed + target_idx * 1000,
         )
-        transforms = generate_transforms(samples, settings)
+        transforms = generate_transforms(samples, settings, max_instances=target_quota)
         all_transforms.extend(transforms)
 
     limit = settings.preview_instances if preview else settings.max_instances

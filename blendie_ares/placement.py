@@ -27,7 +27,7 @@ def _make_transform(sample, rng, settings):
     return transform
 
 
-def _chain_mode(samples, settings, rng):
+def _chain_mode(samples, settings, rng, max_instances):
     if not samples:
         return []
 
@@ -46,12 +46,12 @@ def _chain_mode(samples, settings, rng):
         if previous is None or (sample["point"] - previous["point"]).length >= spacing:
             selected.append(sample)
             previous = sample
-        if len(selected) >= settings.max_instances:
+        if len(selected) >= max_instances:
             break
     return selected
 
 
-def _fill_mode(samples, settings, rng):
+def _fill_mode(samples, settings, rng, max_instances):
     if not samples:
         return []
 
@@ -65,7 +65,7 @@ def _fill_mode(samples, settings, rng):
     idx = 0
     while (
         idx < len(candidates)
-        and len(selected) < settings.max_instances
+        and len(selected) < max_instances
         and tries < settings.max_iterations
     ):
         sample = candidates[idx]
@@ -93,27 +93,28 @@ def _fill_mode(samples, settings, rng):
     return selected
 
 
-def _guided_mode(samples, settings, rng):
+def _guided_mode(samples, settings, rng, max_instances):
     if not samples:
         return []
 
     step = max(1, int(round(1.0 / max(0.01, settings.density))))
     selected = samples[::step]
-    if len(selected) > settings.max_instances:
-        selected = selected[: settings.max_instances]
+    if len(selected) > max_instances:
+        selected = selected[:max_instances]
     return selected
 
 
-def select_samples_for_mode(samples, settings):
+def select_samples_for_mode(samples, settings, max_instances=None):
     rng = random.Random(settings.random_seed)
+    max_instances = max_instances if max_instances is not None else settings.max_instances
     if settings.mode == "CHAIN":
-        return _chain_mode(samples, settings, rng)
+        return _chain_mode(samples, settings, rng, max_instances)
     if settings.mode == "FILL":
-        return _fill_mode(samples, settings, rng)
-    return _guided_mode(samples, settings, rng)
+        return _fill_mode(samples, settings, rng, max_instances)
+    return _guided_mode(samples, settings, rng, max_instances)
 
 
-def generate_transforms(samples, settings):
+def generate_transforms(samples, settings, max_instances=None):
     rng = random.Random(settings.random_seed + 17)
-    selected = select_samples_for_mode(samples, settings)
+    selected = select_samples_for_mode(samples, settings, max_instances=max_instances)
     return [_make_transform(sample, rng, settings) for sample in selected]
