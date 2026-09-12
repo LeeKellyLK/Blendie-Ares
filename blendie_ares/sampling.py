@@ -49,8 +49,8 @@ def _sample_point_on_triangle(v0, v1, v2, rng):
     return (v0 * a) + (v1 * b) + (v2 * c)
 
 
-def sample_target_surface(target_obj, count, distribution, seed):
-    depsgraph = bpy.context.evaluated_depsgraph_get()
+def sample_target_surface(target_obj, count, distribution, seed, depsgraph=None):
+    depsgraph = depsgraph or bpy.context.evaluated_depsgraph_get()
     triangles = _triangle_data(target_obj, depsgraph)
     if not triangles:
         return []
@@ -91,4 +91,3 @@ def matrix_from_normal_tangent(location: Vector, normal: Vector, tangent: Vector
     rotation = Matrix((x_axis, y_axis, z_axis)).transposed().to_4x4()
     rotation.translation = location
     return rotation
-

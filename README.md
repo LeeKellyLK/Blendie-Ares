@@ -30,21 +30,21 @@ Blendie-Ares is a Blender add-on (targeting Blender **5.2.1**) for distributing 
 
 ## Add-on structure
 
-- `/home/runner/work/Blendie-Ares/Blendie-Ares/blendie_ares/__init__.py`  
+- `blendie_ares/__init__.py`  
   Add-on metadata and registration entry point
-- `/home/runner/work/Blendie-Ares/Blendie-Ares/blendie_ares/properties.py`  
+- `blendie_ares/properties.py`  
   Scene-level add-on settings
-- `/home/runner/work/Blendie-Ares/Blendie-Ares/blendie_ares/ui.py`  
+- `blendie_ares/ui.py`  
   3D View sidebar panel
-- `/home/runner/work/Blendie-Ares/Blendie-Ares/blendie_ares/operators.py`  
+- `blendie_ares/operators.py`  
   Preview/Apply/Clear/selection operators
-- `/home/runner/work/Blendie-Ares/Blendie-Ares/blendie_ares/validation.py`  
+- `blendie_ares/validation.py`  
   Source/target resolution and validation
-- `/home/runner/work/Blendie-Ares/Blendie-Ares/blendie_ares/sampling.py`  
+- `blendie_ares/sampling.py`  
   Surface sampling and orientation helpers
-- `/home/runner/work/Blendie-Ares/Blendie-Ares/blendie_ares/placement.py`  
+- `blendie_ares/placement.py`  
   Chain/fill/guided placement strategies
-- `/home/runner/work/Blendie-Ares/Blendie-Ares/blendie_ares/utils.py`  
+- `blendie_ares/utils.py`  
   Collection/output utility helpers
 
 ## Installation
@@ -52,7 +52,7 @@ Blendie-Ares is a Blender add-on (targeting Blender **5.2.1**) for distributing 
 1. Open Blender 5.2.1.
 2. Go to `Edit > Preferences > Add-ons`.
 3. Click `Install...`.
-4. Select the add-on folder (or zip containing `blendie_ares`).
+4. Select the packaged add-on `.zip` file (or `blendie_ares/__init__.py` if installing unpacked source).
 5. Enable **Blendie Ares**.
 
 ## Quick workflow

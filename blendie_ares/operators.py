@@ -34,11 +34,12 @@ def _build_instances(context, source_obj, transforms, collection_name, convert_t
     return created
 
 
-def _compute_transforms_for_targets(settings, targets, preview):
+def _compute_transforms_for_targets(context, settings, targets, preview):
     total_target_count = max(1, len(targets))
     base_count = settings.preview_instances if preview else settings.max_instances
     base_per_target = base_count // total_target_count
     remainder = base_count % total_target_count
+    depsgraph = context.evaluated_depsgraph_get()
 
     all_transforms = []
     for target_idx, target in enumerate(targets):
@@ -51,6 +52,7 @@ def _compute_transforms_for_targets(settings, targets, preview):
             sample_count,
             settings.distribution,
             settings.random_seed + target_idx * 1000,
+            depsgraph=depsgraph,
         )
         transforms = generate_transforms(samples, settings, max_instances=target_quota)
         all_transforms.extend(transforms)
@@ -109,7 +111,7 @@ class BLENDIEARES_OT_preview(bpy.types.Operator):
         settings.warning_message = "; ".join(messages)
         for msg in messages:
             self.report({"WARNING"}, msg)
-        transforms = _compute_transforms_for_targets(settings, targets, preview=True)
+        transforms = _compute_transforms_for_targets(context, settings, targets, preview=True)
         _build_instances(
             context,
             source,
@@ -140,7 +142,7 @@ class BLENDIEARES_OT_apply(bpy.types.Operator):
         settings.warning_message = "; ".join(messages)
         for msg in messages:
             self.report({"WARNING"}, msg)
-        transforms = _compute_transforms_for_targets(settings, targets, preview=False)
+        transforms = _compute_transforms_for_targets(context, settings, targets, preview=False)
         _build_instances(
             context,
             source,

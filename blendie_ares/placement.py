@@ -92,7 +92,22 @@ def _fill_mode(samples, settings, rng, max_instances):
     rng.shuffle(candidates)
     min_dist = max(1e-5, settings.spacing * (1.0 - settings.contact_tolerance))
     min_dist_sq = min_dist * min_dist
+    neighbor_offsets = [
+        (dx, dy, dz)
+        for dx in (-1, 0, 1)
+        for dy in (-1, 0, 1)
+        for dz in (-1, 0, 1)
+    ]
+
+    def grid_key(point):
+        return (
+            int(math.floor(point.x / min_dist)),
+            int(math.floor(point.y / min_dist)),
+            int(math.floor(point.z / min_dist)),
+        )
+
     selected = []
+    grid = {}
     tries = 0
     idx = 0
     while (
@@ -106,13 +121,26 @@ def _fill_mode(samples, settings, rng, max_instances):
 
         if not selected:
             selected.append(sample)
+            grid.setdefault(grid_key(sample["point"]), []).append(sample["point"])
             continue
 
-        nearest_dist_sq = min((sample["point"] - s["point"]).length_squared for s in selected)
-        if nearest_dist_sq < min_dist_sq:
+        point = sample["point"]
+        key = grid_key(point)
+        too_close = False
+        for dx, dy, dz in neighbor_offsets:
+            neighbor_key = (key[0] + dx, key[1] + dy, key[2] + dz)
+            for neighbor_point in grid.get(neighbor_key, []):
+                if (point - neighbor_point).length_squared < min_dist_sq:
+                    too_close = True
+                    break
+            if too_close:
+                break
+
+        if too_close:
             continue
 
         selected.append(sample)
+        grid.setdefault(key, []).append(point)
 
     return selected
 
