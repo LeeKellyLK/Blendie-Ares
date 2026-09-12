@@ -145,14 +145,15 @@ def _build_world_bvh_from_object(target_obj: bpy.types.Object, depsgraph):
     eval_obj = target_obj.evaluated_get(depsgraph)
     eval_mesh = eval_obj.to_mesh()
     if eval_mesh is None:
-        return None
+        return None, None
     try:
         eval_mesh.calc_loop_triangles()
         verts = [eval_obj.matrix_world @ v.co for v in eval_mesh.vertices]
         polygons = [tuple(tri.vertices) for tri in eval_mesh.loop_triangles]
         if not polygons:
-            return None
-        return BVHTree.FromPolygons(verts, polygons, all_triangles=True)
+            return None, None
+        normal_matrix = eval_obj.matrix_world.to_3x3().inverted().transposed()
+        return BVHTree.FromPolygons(verts, polygons, all_triangles=True), normal_matrix
     finally:
         eval_obj.to_mesh_clear()
 
@@ -232,8 +233,8 @@ def generate_chain_link(
     if len(chain_points) < 2:
         raise ValueError("Selected edge loop path is too short for generation")
 
-    bvh = _build_world_bvh_from_object(target_obj, depsgraph)
-    if bvh is None:
+    bvh, normal_matrix = _build_world_bvh_from_object(target_obj, depsgraph)
+    if bvh is None or normal_matrix is None:
         raise ValueError("Could not build target mesh spatial data")
 
     for i, point in enumerate(chain_points):
@@ -244,7 +245,8 @@ def generate_chain_link(
             tangent = Vector((1.0, 0.0, 0.0))
 
         nearest = bvh.find_nearest(point)
-        normal = nearest[2] if nearest else Vector((0.0, 0.0, 1.0))
+        raw_normal = nearest[2] if nearest else Vector((0.0, 0.0, 1.0))
+        normal = (normal_matrix @ raw_normal).normalized()
         rot = _orientation_from_tangent_normal(tangent, normal)
         if i % 2:
             rot = Quaternion(tangent.normalized(), pi * 0.5) @ rot
