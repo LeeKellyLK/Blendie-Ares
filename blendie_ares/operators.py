@@ -12,6 +12,10 @@ from .utils import (
 from .validation import validate_configuration
 
 
+def _scene_collection_name(scene, base_name):
+    return f"{base_name}_{scene.name}"
+
+
 def _build_instances(context, source_obj, transforms, collection_name, convert_to_real, chunk_size):
     collection = get_or_create_collection(context.scene, collection_name)
     clear_collection(collection, context.scene)
@@ -154,7 +158,9 @@ class BLENDIEARES_OT_preview(bpy.types.Operator):
             self.report({"WARNING"}, msg)
         transforms = _compute_transforms_for_targets(context, settings, targets, preview=True)
         if not transforms:
-            preview_collection = bpy.data.collections.get(PREVIEW_COLLECTION_NAME)
+            preview_collection = bpy.data.collections.get(
+                _scene_collection_name(context.scene, PREVIEW_COLLECTION_NAME)
+            )
             if preview_collection is not None:
                 clear_collection(preview_collection, context.scene)
             self.report(
@@ -166,7 +172,7 @@ class BLENDIEARES_OT_preview(bpy.types.Operator):
             context,
             source,
             transforms,
-            PREVIEW_COLLECTION_NAME,
+            _scene_collection_name(context.scene, PREVIEW_COLLECTION_NAME),
             convert_to_real=False,
             chunk_size=settings.chunk_size,
         )
@@ -194,7 +200,9 @@ class BLENDIEARES_OT_apply(bpy.types.Operator):
             self.report({"WARNING"}, msg)
         transforms = _compute_transforms_for_targets(context, settings, targets, preview=False)
         if not transforms:
-            result_collection = bpy.data.collections.get(RESULT_COLLECTION_NAME)
+            result_collection = bpy.data.collections.get(
+                _scene_collection_name(context.scene, RESULT_COLLECTION_NAME)
+            )
             if result_collection is not None:
                 clear_collection(result_collection, context.scene)
             self.report(
@@ -206,11 +214,13 @@ class BLENDIEARES_OT_apply(bpy.types.Operator):
             context,
             source,
             transforms,
-            RESULT_COLLECTION_NAME,
+            _scene_collection_name(context.scene, RESULT_COLLECTION_NAME),
             convert_to_real=settings.convert_to_real,
             chunk_size=settings.chunk_size,
         )
-        preview_collection = bpy.data.collections.get(PREVIEW_COLLECTION_NAME)
+        preview_collection = bpy.data.collections.get(
+            _scene_collection_name(context.scene, PREVIEW_COLLECTION_NAME)
+        )
         if preview_collection is not None:
             clear_collection(preview_collection, context.scene)
         self.report({"INFO"}, f"Applied: {len(transforms)} instances.")
@@ -224,8 +234,8 @@ class BLENDIEARES_OT_clear(bpy.types.Operator):
     bl_options = {"REGISTER", "UNDO"}
 
     def execute(self, context):
-        remove_collection(PREVIEW_COLLECTION_NAME, context.scene)
-        remove_collection(RESULT_COLLECTION_NAME, context.scene)
+        remove_collection(_scene_collection_name(context.scene, PREVIEW_COLLECTION_NAME), context.scene)
+        remove_collection(_scene_collection_name(context.scene, RESULT_COLLECTION_NAME), context.scene)
         context.scene.blendie_ares.warning_message = ""
         self.report({"INFO"}, "Cleared generated output.")
         return {"FINISHED"}
