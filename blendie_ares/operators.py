@@ -107,6 +107,8 @@ class BLENDIEARES_OT_preview(bpy.types.Operator):
             return {"CANCELLED"}
 
         settings.warning_message = "; ".join(messages)
+        for msg in messages:
+            self.report({"WARNING"}, msg)
         transforms = _compute_transforms_for_targets(settings, targets, preview=True)
         _build_instances(
             context,
@@ -136,6 +138,8 @@ class BLENDIEARES_OT_apply(bpy.types.Operator):
             return {"CANCELLED"}
 
         settings.warning_message = "; ".join(messages)
+        for msg in messages:
+            self.report({"WARNING"}, msg)
         transforms = _compute_transforms_for_targets(settings, targets, preview=False)
         _build_instances(
             context,
