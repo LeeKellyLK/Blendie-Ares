@@ -107,7 +107,12 @@ def _compute_transforms_for_targets(context, settings, targets, preview):
         if target_quota <= 0:
             continue
         sample_count = int(round(target_quota * settings.density))
-        if settings.mode in {"CHAIN", "GUIDED"}:
+        if settings.mode == "CHAIN":
+            sample_count = min(
+                settings.max_iterations,
+                max(target_quota, sample_count * 8),
+            )
+        elif settings.mode == "GUIDED":
             sample_count = max(target_quota, sample_count)
         if sample_count <= 0:
             continue

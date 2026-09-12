@@ -27,13 +27,11 @@ def _make_transform(sample, rng, settings):
     return transform
 
 
-def _projection_axes(samples):
-    points = [s["point"] for s in samples]
-    mins = Vector((min(p.x for p in points), min(p.y for p in points), min(p.z for p in points)))
-    maxs = Vector((max(p.x for p in points), max(p.y for p in points), max(p.z for p in points)))
-    extent = maxs - mins
-    ordered = sorted(range(3), key=lambda i: extent[i], reverse=True)
-    return ordered[0], ordered[1]
+def _surface_chart(sample):
+    normal = sample["normal"]
+    normal_axis = max(range(3), key=lambda axis: abs(normal[axis]))
+    surface_axes = [axis for axis in range(3) if axis != normal_axis]
+    return (normal_axis, normal[normal_axis] < 0.0), surface_axes[0], surface_axes[1]
 
 
 def _chain_mode(samples, settings, rng, max_instances):
@@ -42,45 +40,60 @@ def _chain_mode(samples, settings, rng, max_instances):
 
     spacing = max(1e-5, settings.spacing * max(0.1, 1.0 - settings.contact_tolerance * 0.5))
     row_step = max(1e-5, spacing * 0.8660254)
-    u_axis, v_axis = _projection_axes(samples)
-    min_u = min(s["point"][u_axis] for s in samples)
-    min_v = min(s["point"][v_axis] for s in samples)
 
-    buckets = {}
+    charts = {}
     for sample in samples:
-        point = sample["point"]
-        local_u = point[u_axis] - min_u
-        local_v = point[v_axis] - min_v
-        row = int(local_v // row_step)
-        row_offset = 0.5 if (row % 2) else 0.0
-        col = int((local_u / spacing) - row_offset)
-
-        center_u = (col + row_offset + 0.5) * spacing
-        center_v = (row + 0.5) * row_step
-        score = (local_u - center_u) ** 2 + (local_v - center_v) ** 2
-
-        key = (row, col)
-        current = buckets.get(key)
-        if current is None or score < current[0]:
-            buckets[key] = (score, sample)
+        chart_key, u_axis, v_axis = _surface_chart(sample)
+        chart = charts.setdefault(chart_key, (u_axis, v_axis, []))
+        chart[2].append(sample)
 
     rows = {}
-    for (row, col), (_, sample) in buckets.items():
-        rows.setdefault(row, []).append((col, sample))
+    for chart_key, (u_axis, v_axis, chart_samples) in charts.items():
+        min_u = min(sample["point"][u_axis] for sample in chart_samples)
+        min_v = min(sample["point"][v_axis] for sample in chart_samples)
+        buckets = {}
+        for sample in chart_samples:
+            point = sample["point"]
+            local_u = point[u_axis] - min_u
+            local_v = point[v_axis] - min_v
+            row = int(local_v // row_step)
+            row_offset = 0.5 if (row % 2) else 0.0
+            col = int((local_u / spacing) - row_offset)
+
+            center_u = (col + row_offset + 0.5) * spacing
+            center_v = (row + 0.5) * row_step
+            score = (local_u - center_u) ** 2 + (local_v - center_v) ** 2
+
+            key = (row, col)
+            current = buckets.get(key)
+            if current is None or score < current[0]:
+                buckets[key] = (score, sample)
+
+        for (row, col), (_, sample) in buckets.items():
+            rows.setdefault((chart_key, row), []).append((col, sample, u_axis))
 
     selected = []
-    for row in sorted(rows):
-        row_items = sorted(rows[row], key=lambda x: x[0], reverse=bool(row % 2))
-        for _, sample in row_items:
+    for (_, row), row_items in sorted(rows.items()):
+        row_items = sorted(row_items, key=lambda item: item[0], reverse=bool(row % 2))
+        for _, sample, u_axis in row_items:
+            sample = sample.copy()
+            u_direction = Vector((0.0, 0.0, 0.0))
+            u_direction[u_axis] = 1.0
+            tangent = u_direction - sample["normal"] * u_direction.dot(sample["normal"])
+            if tangent.length <= 1e-8:
+                tangent = sample["tangent"].copy()
+            tangent.normalize()
             if row % 2:
-                sample = sample.copy()
-                alt_tangent = sample["normal"].cross(sample["tangent"])
+                alt_tangent = sample["normal"].cross(tangent)
                 if alt_tangent.length > 1e-8:
                     alt_tangent.normalize()
-                    sample["tangent"] = alt_tangent
+                    tangent = alt_tangent
+            sample["tangent"] = tangent
             selected.append(sample)
-            if len(selected) >= max_instances:
-                return selected
+
+    if len(selected) > max_instances:
+        step = len(selected) / max_instances
+        return [selected[int(index * step)] for index in range(max_instances)]
     return selected
 
 

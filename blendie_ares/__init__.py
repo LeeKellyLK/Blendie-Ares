@@ -8,7 +8,14 @@ bl_info = {
     "category": "Object",
 }
 
-from . import operators, properties, ui
+if all(name in locals() for name in ("operators", "properties", "ui")):
+    import importlib
+
+    importlib.reload(properties)
+    importlib.reload(operators)
+    importlib.reload(ui)
+else:
+    from . import operators, properties, ui
 
 
 def register():
