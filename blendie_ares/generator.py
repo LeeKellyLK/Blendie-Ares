@@ -100,7 +100,20 @@ def _ordered_edge_loop_vertices(target_obj: bpy.types.Object) -> List[int]:
     if len(endpoints) not in (0, 2):
         raise ValueError("Selected edges must form one continuous path or closed loop")
 
-    start = endpoints[0] if endpoints else min(adjacency.keys())
+    if endpoints:
+        start = endpoints[0]
+    else:
+        start = min(adjacency.keys())
+        active = bm.select_history.active if bm.select_history else None
+        if isinstance(active, bmesh.types.BMVert) and active.select and active.index in adjacency:
+            start = active.index
+        elif isinstance(active, bmesh.types.BMEdge) and active.select:
+            a = active.verts[0].index
+            b = active.verts[1].index
+            if a in adjacency:
+                start = a
+            elif b in adjacency:
+                start = b
     ordered = [start]
     visited_edges = set()
     prev = None
@@ -154,8 +167,7 @@ def _build_world_bvh_from_object(target_obj: bpy.types.Object, depsgraph):
         polygons = [tuple(tri.vertices) for tri in eval_mesh.loop_triangles]
         if not polygons:
             return None, None
-        normal_matrix = eval_obj.matrix_world.to_3x3().inverted().transposed()
-        return BVHTree.FromPolygons(verts, polygons, all_triangles=True), normal_matrix
+        return BVHTree.FromPolygons(verts, polygons, all_triangles=True), None
     finally:
         eval_obj.to_mesh_clear()
 
@@ -180,7 +192,6 @@ def generate_surface_fill(
             raise ValueError("Target mesh has no triangles to sample")
 
         world = eval_obj.matrix_world
-        normal_matrix = world.to_3x3().inverted().transposed()
         weighted = []
         total_area = 0.0
         for tri in triangles:
@@ -210,7 +221,7 @@ def generate_surface_fill(
             if any((candidate - p).length < spacing for p in placed_points):
                 continue
 
-            normal = (normal_matrix @ tri.normal).normalized()
+            normal = (verts[1] - verts[0]).cross(verts[2] - verts[0]).normalized()
             tangent = (verts[1] - verts[0]).normalized()
             rot = _orientation_from_tangent_normal(tangent, normal)
             loc = candidate + normal * normal_offset
@@ -235,8 +246,8 @@ def generate_chain_link(
     if len(chain_points) < 2:
         raise ValueError("Selected edge loop path is too short for generation")
 
-    bvh, normal_matrix = _build_world_bvh_from_object(target_obj, depsgraph)
-    if bvh is None or normal_matrix is None:
+    bvh, _ = _build_world_bvh_from_object(target_obj, depsgraph)
+    if bvh is None:
         raise ValueError("Could not build target mesh spatial data")
 
     for i, point in enumerate(chain_points):
@@ -247,8 +258,7 @@ def generate_chain_link(
             tangent = Vector((1.0, 0.0, 0.0))
 
         nearest = bvh.find_nearest(point)
-        raw_normal = nearest[1] if nearest else Vector((0.0, 0.0, 1.0))
-        normal = (normal_matrix @ raw_normal).normalized()
+        normal = nearest[1].normalized() if nearest else Vector((0.0, 0.0, 1.0))
         rot = _orientation_from_tangent_normal(tangent, normal)
         if i % 2:
             rot = Quaternion(tangent.normalized(), pi * 0.5) @ rot
